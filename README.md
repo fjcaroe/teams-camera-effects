@@ -24,6 +24,9 @@ cd C:\Users\tito4\Documents\Proyectos\EffectCamera\teams-camera-effects
 
 **Elegir efectos y gestos...** abre un panel con una casilla para cada tecnica.
 Solo las marcadas pueden activarse por gesto, boton o teclado. Al desmarcar un
+efecto su boton desaparece de **Tus tecnicas**; al marcarlo aparece inmediatamente
+en ese panel, incluidos Aura y Matrix. El contador indica cuantas tienes habilitadas.
+Al desmarcar un
 efecto en uso se detiene; si desmarcas Goku estando invisible, vuelves a aparecer.
 **Solo Goku** desmarca todos los demas. En una instalacion nueva solo Goku viene
 habilitado: una palma abierta no activa Rasengan hasta que lo marques.

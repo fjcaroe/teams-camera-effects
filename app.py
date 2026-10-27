@@ -48,7 +48,7 @@ class App:
         side = tk.Frame(content, bg="#1a1d2b", width=278)
         side.grid(row=0, column=1, sticky="ns", padx=(22, 0))
         side.pack_propagate(False)
-        self.label(side, "TU CAMARA", 11, "#a5acc7").pack(anchor="w", padx=18, pady=(18, 8))
+        self.label(side, "TU CAMARA", 11, "#a5acc7").pack(anchor="w", padx=18, pady=(12, 6))
         row = tk.Frame(side, bg="#1a1d2b")
         row.pack(fill="x", padx=18)
         self.label(row, "Indice webcam", 11).pack(side="left")
@@ -58,11 +58,16 @@ class App:
         tk.Checkbutton(side, text="Enviar a Teams (OBS)", variable=self.virtual, bg="#1a1d2b", fg="#e1e4f4", selectcolor="#292d40", activebackground="#1a1d2b", activeforeground="white").pack(anchor="w", padx=14, pady=8)
         self.start_button = self.button(side, "Iniciar webcam", self.toggle, accent=True)
         self.capture_button = self.button(side, "1  Capturar fondo · 5 s", lambda: self.command("capture"))
-        self.label(side, "Apartate durante la cuenta regresiva.\nCamara fija, misma iluminacion.", 9, "#9da5c1").pack(anchor="w", padx=18, pady=(0, 16))
-        self.label(side, "TUS TECNICAS", 11, "#a5acc7").pack(anchor="w", padx=18, pady=(5, 8))
+        self.label(side, "Apartate durante la cuenta regresiva.\nCamara fija, misma iluminacion.", 9, "#9da5c1").pack(anchor="w", padx=18, pady=(0, 8))
+        self.techniques_title = self.label(side, "TUS TECNICAS", 11, "#a5acc7")
+        self.techniques_title.pack(anchor="w", padx=18, pady=(5, 6))
         self.button(side, "Elegir efectos y gestos...", self.choose_effects, accent=True)
-        for action, caption in (("teleport", "2  Teletransporte"), ("clones", "3  Kage Bunshin"), ("rasengan", "4  Rasengan")):
-            self.effect_buttons[action] = self.button(side, caption, lambda a=action: self.command(a))
+        self.techniques_frame = tk.Frame(side, bg="#1a1d2b")
+        self.techniques_frame.pack(fill="x", padx=18, pady=3)
+        self.techniques_frame.columnconfigure(0, weight=1)
+        self.no_techniques = self.label(self.techniques_frame, "Ningun efecto habilitado", 9, "#9da5c1")
+        for action, (name, _, shortcut) in CATALOG.items():
+            self.effect_buttons[action] = tk.Button(self.techniques_frame, text=f"{shortcut}  {name.split(' · ')[-1]}", command=lambda a=action: self.command(a), bg="#292e44", fg="#eef0ff", activebackground="#b5a4ff", activeforeground="#10121b", relief="flat", cursor="hand2", font=("Segoe UI", 10, "bold"), pady=2)
         self.button(side, "0  Volver a normal", lambda: self.command("reset"))
         self.gesture_button = self.button(side, "Pausar gestos", self.toggle_gestures)
         self.status = tk.StringVar(value="Listo. Webcam integrada = 0; prueba 1 o 2 para una USB.")
@@ -119,8 +124,17 @@ class App:
     def refresh_selection(self):
         names = [CATALOG[key][0].split(" · ")[-1] for key in CATALOG if key in self.enabled]
         self.selection_label.configure(text="Efectos habilitados: " + (", ".join(names) if names else "ninguno"), wraplength=700)
+        row = 0
         for key, button in self.effect_buttons.items():
             button.configure(state="normal" if key in self.enabled else "disabled")
+            button.grid_forget()
+            if key in self.enabled:
+                button.grid(row=row, column=0, sticky="ew", pady=2)
+                row += 1
+        self.no_techniques.grid_forget()
+        if not row:
+            self.no_techniques.grid(row=0, column=0, sticky="w", pady=5)
+        self.techniques_title.configure(text=f"TUS TECNICAS ({row})")
         for key, variable in self.effect_vars.items():
             variable.set(key in self.enabled)
 

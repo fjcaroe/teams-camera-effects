@@ -42,3 +42,11 @@ camara virtual dentro de Teams. No se hizo una llamada ni se grabo la webcam.
   modo Matrix activo. Prueba sin salida virtual solicitada.
 - Reconocimiento de los dos nuevos gestos frente a una persona y recepcion en
   Teams siguen pendientes de ensayo humano. No se grabo la webcam.
+
+## Correccion del panel Tus tecnicas
+
+- El panel se genera desde el catalogo completo y muestra solo efectos habilitados.
+  Aura y Matrix aparecen inmediatamente al seleccionarlos; se retiran al desmarcar.
+- 23 pruebas aprobadas. La nueva prueba Tk selecciona los cinco, comprueba sus
+  botones y contador, ejecuta Aura/Matrix desde el panel, vuelve a Solo Goku y
+  verifica la seleccion vacia. Se comprueba que los controles caben a 1000x720.

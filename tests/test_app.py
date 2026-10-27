@@ -11,6 +11,41 @@ from app import App
 class CaptureUiTest(unittest.TestCase):
     @patch("app.save_enabled")
     @patch("app.load_enabled", return_value={"teleport"})
+    def test_selected_techniques_appear_and_trigger_from_sidebar(self, load, save):
+        root = tk.Tk()
+        try:
+            app = App(root)
+            root.geometry("1000x720")
+            root.update_idletasks()
+            self.assertEqual(set(app.effect_buttons), {"teleport", "clones", "rasengan", "aura", "matrix"})
+            self.assertEqual(app.effect_buttons["aura"].winfo_manager(), "")
+            app.choose_effects()
+            app.engine = SimpleNamespace(commands=queue.Queue())
+            for variable in app.effect_vars.values():
+                variable.set(True)
+            app.update_selection()
+            root.update_idletasks()
+            self.assertEqual(app.techniques_title.cget("text"), "TUS TECNICAS (5)")
+            self.assertTrue(all(button.winfo_manager() == "grid" for button in app.effect_buttons.values()))
+            app.engine.commands.get_nowait()
+            app.effect_buttons["aura"].invoke()
+            self.assertEqual(app.engine.commands.get_nowait(), "aura")
+            app.effect_buttons["matrix"].invoke()
+            self.assertEqual(app.engine.commands.get_nowait(), "matrix")
+            side = app.gesture_button.master
+            self.assertLessEqual(app.gesture_button.winfo_y() + app.gesture_button.winfo_height(), side.winfo_height())
+            app.only_goku()
+            self.assertEqual(app.effect_buttons["aura"].winfo_manager(), "")
+            self.assertEqual(app.effect_buttons["teleport"].winfo_manager(), "grid")
+            for variable in app.effect_vars.values():
+                variable.set(False)
+            app.update_selection()
+            self.assertEqual(app.no_techniques.winfo_manager(), "grid")
+        finally:
+            root.destroy()
+
+    @patch("app.save_enabled")
+    @patch("app.load_enabled", return_value={"teleport"})
     def test_effect_dialog_updates_engine_and_only_goku(self, load, save):
         root = tk.Tk()
         root.withdraw()
