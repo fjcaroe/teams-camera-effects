@@ -24,7 +24,7 @@ def main():
                 try:
                     snapshot = engine.frames.get(timeout=0.5)
                     count += 1
-                    virtual = snapshot[-1]
+                    virtual = snapshot[7]
                     if count >= 12:
                         break
                 except queue.Empty:

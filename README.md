@@ -15,7 +15,9 @@ con la aplicacion que elijas (Teams, por ejemplo).
 4. Selecciona el indice de webcam: normalmente 0 es la integrada. Prueba 1 o 2
    para USB; los indices pueden cambiar al conectar dispositivos. Pulsa **Iniciar webcam**.
 5. Pulsa **Capturar fondo**, apartate durante los 5 segundos y espera el aviso
-   **Fondo listo**. Camara fija, iluminacion estable. Si ves tu silueta congelada
+   verde **FONDO LISTO** sobre la vista previa. Veras una cuenta regresiva grande
+   encima de la imagen y el boton indicara que esta capturando. Camara fija,
+   iluminacion estable. Si ves tu silueta congelada
    al desaparecer, repite la captura con la habitacion vacia.
 6. En Teams, abre **Configuracion → Dispositivos → Camara** y selecciona
    **OBS Virtual Camera**. Si no aparece, cierra Teams por completo y vuelve a abrirlo
@@ -41,6 +43,12 @@ repetirlo; hay una pausa de 1,8 segundos entre activaciones. El gesto de Goku al
 desaparecer/reaparecer incluso cuando solo se transmite el fondo: la deteccion sigue
 mirando la webcam real. Los clones y Rasengan se activan y desactivan con su gesto.
 Los controles manuales permiten ensayar; **Pausar gestos** evita activaciones al hablar.
+
+Debajo de la imagen se muestran manos, rostro y gesto detectados. Para Goku deberia
+aparecer `Gesto: teleport` y avanzar la barra. Si no hay manos o rostro detectados,
+asegura que la mano completa y la cara entren en el encuadre. La deteccion usa
+profundidad de dedos y tolera perdidas breves al tapar la frente. Al detener y
+reiniciar la webcam se pierde el fondo: debes capturarlo otra vez.
 
 El Rasengan sigue la palma abierta. Los clones usan segmentacion y una copia del
 fondo; pueden fallar con poca luz, pelo, objetos o movimientos rapidos. El gesto de

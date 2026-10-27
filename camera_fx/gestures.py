@@ -8,8 +8,10 @@ def distance(a, b):
 
 
 def extended(hand, tip, pip, mcp):
-    # Distances work for either hand, including a rotated wrist.
-    return distance(hand[tip], hand[0]) > distance(hand[pip], hand[0]) * 1.16 and distance(hand[tip], hand[mcp]) > distance(hand[pip], hand[mcp]) * 1.35
+    # Depth matters when pointing the fingers toward the forehead / camera.
+    def d(a, b):
+        return math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (getattr(a, "z", 0)-getattr(b, "z", 0))**2)
+    return d(hand[tip], hand[0]) > d(hand[pip], hand[0]) * 1.08 and d(hand[tip], hand[mcp]) > d(hand[pip], hand[mcp]) * 1.2
 
 
 def fingers(hand):
@@ -23,9 +25,10 @@ def classify(hands, face):
         if face and index and middle and not ring and not pinky:
             # Forehead and temples: tolerate either side and natural finger spacing.
             forehead = face[10]
+            brow = face[168]
             head_width = distance(face[234], face[454])
             tips = (hand[8], hand[12])
-            if any(distance(t, forehead) < max(0.08, head_width * 0.65) for t in tips):
+            if any(min(distance(t, forehead), distance(t, brow)) < max(0.09, head_width * 0.8) for t in tips):
                 return "teleport", None
     if len(hands) == 2:
         if all(fingers(h)[0] for h in hands) and distance(hands[0][8], hands[1][8]) < 0.18:
@@ -46,15 +49,19 @@ class GestureLatch:
     latched: bool = False
     released_at: float | None = None
     last_fire: float = -100.0
+    dropout_grace: float = 0.18
 
     def update(self, gesture, now):
         if gesture is None:
-            self.candidate = None
             if self.released_at is None:
                 self.released_at = now
+            if now - self.released_at >= self.dropout_grace:
+                self.candidate = None
             if now - self.released_at >= self.release:
                 self.latched = False
             return None
+        if self.released_at is not None and now - self.released_at >= self.dropout_grace:
+            self.candidate = None
         self.released_at = None
         if gesture != self.candidate:
             self.candidate, self.since = gesture, now

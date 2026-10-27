@@ -3,6 +3,7 @@ from types import SimpleNamespace as Point
 import numpy as np
 from camera_fx.effects import Effects
 from camera_fx.gestures import GestureLatch, classify
+from camera_fx.capture import BackgroundCapture
 
 
 def hand(open_fingers=(True, True, False, False), offset=0):
@@ -16,6 +17,27 @@ def hand(open_fingers=(True, True, False, False), offset=0):
 
 
 class GestureTests(unittest.TestCase):
+    def test_brief_dropout_during_hold_is_tolerated(self):
+        latch = GestureLatch()
+        latch.update("teleport", 0)
+        latch.update(None, 0.3)
+        latch.update("teleport", 0.4)
+        self.assertEqual(latch.update("teleport", 0.7), "teleport")
+
+    def test_long_dropout_restarts_hold(self):
+        latch = GestureLatch()
+        latch.update("teleport", 0)
+        latch.update(None, 0.3)
+        self.assertIsNone(latch.update("teleport", 0.7))
+        self.assertIsNone(latch.update("teleport", 0.8))
+
+    def test_fingers_pointing_toward_camera_use_depth(self):
+        from camera_fx.gestures import fingers
+        points = hand()
+        for pip, tip in ((6, 8), (10, 12)):
+            points[tip] = Point(x=points[pip].x, y=0.49, z=-0.35)
+        self.assertEqual(fingers(points), [True, True, False, False])
+
     def test_teleport_needs_two_fingers_and_forehead(self):
         face = [Point(x=0.5, y=0.25) for _ in range(468)]
         face[234], face[454] = Point(x=0.35, y=0.4), Point(x=0.65, y=0.4)
@@ -46,6 +68,31 @@ class GestureTests(unittest.TestCase):
         latch.update(None, 3)
         latch.update("teleport", 3.1)
         self.assertIsNone(latch.update("teleport", 4))
+
+
+class CaptureTests(unittest.TestCase):
+    def test_countdown_capture_and_teleport_use_captured_background(self):
+        capture = BackgroundCapture(samples=2)
+        frame = np.full((20, 30, 3), 40, np.uint8)
+        capture.start(10)
+        self.assertEqual(capture.countdown(10), 5)
+        self.assertIsNone(capture.update(frame, 14.99))
+        self.assertIsNone(capture.update(frame, 15))
+        background = capture.update(frame, 15.1)
+        self.assertIsNone(capture.countdown(15.2))
+        fx = Effects()
+        fx.capture(background)
+        fx.trigger("teleport", 16)
+        np.testing.assert_array_equal(fx.render(frame * 2, None, 17), frame)
+
+    def test_recapture_resets_previous_burst(self):
+        capture = BackgroundCapture(delay=0, samples=2)
+        frame = np.full((2, 2, 3), 50, np.uint8)
+        capture.start(0)
+        capture.update(frame, 0)
+        capture.start(1)
+        self.assertIsNone(capture.update(frame * 2, 1))
+        np.testing.assert_array_equal(capture.update(frame * 2, 2), frame * 2)
 
 
 class CompositingTests(unittest.TestCase):

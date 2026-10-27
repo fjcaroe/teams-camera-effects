@@ -9,6 +9,7 @@ import pyvirtualcam
 
 from .effects import Effects
 from .gestures import GestureLatch, classify
+from .capture import BackgroundCapture
 
 
 class CameraEngine:
@@ -38,14 +39,14 @@ class CameraEngine:
                 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 960)
                 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 540)
                 cap.set(cv2.CAP_PROP_FPS, 24)
-                hands = stack.enter_context(mp.solutions.hands.Hands(max_num_hands=2, model_complexity=0, min_detection_confidence=0.65, min_tracking_confidence=0.6))
+                hands = stack.enter_context(mp.solutions.hands.Hands(max_num_hands=2, model_complexity=1, min_detection_confidence=0.5, min_tracking_confidence=0.5))
                 face = stack.enter_context(mp.solutions.face_mesh.FaceMesh(max_num_faces=1, refine_landmarks=False))
                 segment = stack.enter_context(mp.solutions.selfie_segmentation.SelfieSegmentation(model_selection=1))
                 fx, latch = Effects(), GestureLatch()
                 virtual_cam = None
                 virtual_attempted = False
-                capture_at = None
-                capture_frames = []
+                capture = BackgroundCapture()
+                last_face, last_face_at = None, -100.0
                 gestures_enabled = True
                 previous = time.monotonic()
                 fps = 0.0
@@ -66,7 +67,7 @@ class CameraEngine:
                     while not self.commands.empty():
                         action = self.commands.get_nowait()
                         if action == "capture":
-                            capture_at, capture_frames = now + 5, []
+                            capture.start(now)
                             self.events.put("Apartate de la camara: capturando el fondo en 5 segundos.")
                         elif action == "gestures":
                             gestures_enabled = not gestures_enabled
@@ -80,18 +81,18 @@ class CameraEngine:
                     face_result = face.process(rgb)
                     hand_points = [h.landmark for h in (hand_result.multi_hand_landmarks or [])]
                     face_points = face_result.multi_face_landmarks[0].landmark if face_result.multi_face_landmarks else None
-                    gesture, palm = classify(hand_points, face_points)
+                    if face_points is not None:
+                        last_face, last_face_at = face_points, now
+                    # Brief occlusion by the Goku hand should not erase the head location.
+                    tracked_face = last_face if now - last_face_at < 0.8 else None
+                    gesture, palm = classify(hand_points, tracked_face)
                     fx.palm = palm
-                    if capture_at is not None:
-                        # Average a short burst after countdown to reduce sensor noise.
-                        if now >= capture_at:
-                            capture_frames.append(frame.copy())
-                            if len(capture_frames) == 8:
-                                import numpy as np
-                                fx.capture(np.mean(capture_frames, axis=0).astype(np.uint8))
-                                capture_at, capture_frames = None, []
-                                latch = GestureLatch()
-                                self.events.put("Fondo listo. Vuelve y acerca dos dedos a la frente.")
+                    if capture.active:
+                        background = capture.update(frame, now)
+                        if background is not None:
+                            fx.capture(background)
+                            latch = GestureLatch()
+                            self.events.put("FONDO LISTO. Vuelve al encuadre. Prueba el boton Teletransporte o dos dedos en la frente.")
                     elif gestures_enabled:
                         fired = latch.update(gesture, now)
                         if fired:
@@ -109,8 +110,9 @@ class CameraEngine:
                         virtual_cam.send(output)
                     fps = fps * 0.9 + 0.1 / max(0.001, now - previous)
                     previous = now
-                    countdown = max(0, int(capture_at - now) + 1) if capture_at else None
-                    snapshot = (output, fps, fx.hidden, fx.mode, fx.background is not None, latch.progress(now), countdown, virtual_cam is not None)
+                    countdown = capture.countdown(now)
+                    tracking = f"Manos: {len(hand_points)} | Rostro: {'detectado' if face_points else 'reciente' if tracked_face else 'no detectado'} | Gesto: {gesture or 'ninguno'}"
+                    snapshot = (output, fps, fx.hidden, fx.mode, fx.background is not None, latch.progress(now), countdown, virtual_cam is not None, tracking)
                     if self.frames.full():
                         try:
                             self.frames.get_nowait()
