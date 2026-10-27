@@ -2,12 +2,38 @@
 import queue
 import tkinter as tk
 import unittest
+from unittest.mock import patch
 from types import SimpleNamespace
 import numpy as np
 from app import App
 
 
 class CaptureUiTest(unittest.TestCase):
+    @patch("app.save_enabled")
+    @patch("app.load_enabled", return_value={"teleport"})
+    def test_effect_dialog_updates_engine_and_only_goku(self, load, save):
+        root = tk.Tk()
+        root.withdraw()
+        try:
+            app = App(root)
+            engine = SimpleNamespace(commands=queue.Queue())
+            app.engine = engine
+            app.choose_effects()
+            self.assertFalse(app.effect_vars["rasengan"].get())
+            self.assertEqual(app.effect_buttons["rasengan"].cget("state"), "disabled")
+            app.effect_vars["rasengan"].set(True)
+            app.update_selection()
+            self.assertEqual(engine.commands.get_nowait(), ("enabled", ["rasengan", "teleport"]))
+            self.assertEqual(app.effect_buttons["rasengan"].cget("state"), "normal")
+            app.only_goku()
+            self.assertEqual(app.enabled, {"teleport"})
+            self.assertEqual(engine.commands.get_nowait(), ("enabled", ["teleport"]))
+            app.command("rasengan")
+            self.assertTrue(engine.commands.empty())
+            save.assert_called_with({"teleport"})
+        finally:
+            root.destroy()
+
     def test_capture_button_countdown_and_ready_confirmation(self):
         root = tk.Tk()
         root.withdraw()

@@ -28,3 +28,17 @@ camara virtual dentro de Teams. No se hizo una llamada ni se grabo la webcam.
 - Prueba de callbacks Tk: boton encola captura, cuenta regresiva deshabilita el
   boton y la finalizacion muestra FONDO LISTO y retira el contador.
 - Motor corregido comprobado con webcam 0 y salida OBS: 12 fotogramas procesados.
+
+## Seleccion independiente de efectos y nuevas tecnicas
+
+- 22 pruebas aprobadas. Incluyen selector Tk, bloqueo de Rasengan por gesto/boton,
+  apagado inmediato al desmarcar, retorno al desactivar Goku estando invisible,
+  aislamiento de otros gestos al desaparecer, persistencia y preferencias vacias.
+- Aura con puno cerrado y Matrix con cuernos: clasificacion, composicion y toggle
+  comprobados con datos sinteticos. Panel de cinco efectos revisado visualmente.
+- `tools/diagnose.py --camera 0 --virtual --effect aura`: 12 fotogramas procesados,
+  modo aura activo y salida OBS confirmada.
+- `tools/diagnose.py --camera 0 --effect matrix`: 12 fotogramas procesados con
+  modo Matrix activo. Prueba sin salida virtual solicitada.
+- Reconocimiento de los dos nuevos gestos frente a una persona y recepcion en
+  Teams siguen pendientes de ensayo humano. No se grabo la webcam.

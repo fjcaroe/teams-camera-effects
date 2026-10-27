@@ -12,10 +12,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--camera", type=int, help="Prueba webcam unos segundos sin grabar")
     parser.add_argument("--virtual", action="store_true", help="Prueba salida OBS; sin --camera envia imagen sintetica")
+    parser.add_argument("--effect", choices=("aura", "matrix", "rasengan"), help="Prueba efecto con --camera")
     args = parser.parse_args()
+    if args.effect and args.camera is None:
+        parser.error("--effect requiere --camera")
     if args.camera is not None:
         from camera_fx.engine import CameraEngine
-        engine = CameraEngine(args.camera, virtual=args.virtual)
+        engine = CameraEngine(args.camera, virtual=args.virtual, enabled={args.effect} if args.effect else None)
+        if args.effect:
+            engine.commands.put(args.effect)
         engine.start()
         count, virtual = 0, False
         deadline = time.monotonic() + 15
@@ -25,6 +30,8 @@ def main():
                     snapshot = engine.frames.get(timeout=0.5)
                     count += 1
                     virtual = snapshot[7]
+                    if args.effect and snapshot[3] != args.effect:
+                        raise RuntimeError("El efecto solicitado no esta activo")
                     if count >= 12:
                         break
                 except queue.Empty:

@@ -10,11 +10,13 @@ import pyvirtualcam
 from .effects import Effects
 from .gestures import GestureLatch, classify
 from .capture import BackgroundCapture
+from .settings import DEFAULT_ENABLED
 
 
 class CameraEngine:
-    def __init__(self, camera=0, virtual=True):
+    def __init__(self, camera=0, virtual=True, enabled=None):
         self.camera, self.virtual = camera, virtual
+        self.enabled = set(DEFAULT_ENABLED if enabled is None else enabled)
         self.commands = queue.Queue()
         self.frames = queue.Queue(maxsize=1)
         self.events = queue.Queue()
@@ -43,6 +45,7 @@ class CameraEngine:
                 face = stack.enter_context(mp.solutions.face_mesh.FaceMesh(max_num_faces=1, refine_landmarks=False))
                 segment = stack.enter_context(mp.solutions.selfie_segmentation.SelfieSegmentation(model_selection=1))
                 fx, latch = Effects(), GestureLatch()
+                fx.set_enabled(self.enabled)
                 virtual_cam = None
                 virtual_attempted = False
                 capture = BackgroundCapture()
@@ -66,7 +69,11 @@ class CameraEngine:
                     now = time.monotonic()
                     while not self.commands.empty():
                         action = self.commands.get_nowait()
-                        if action == "capture":
+                        if isinstance(action, tuple) and action[0] == "enabled":
+                            fx.set_enabled(action[1])
+                            latch = GestureLatch()
+                            self.events.put("Seleccion de efectos actualizada")
+                        elif action == "capture":
                             capture.start(now)
                             self.events.put("Apartate de la camara: capturando el fondo en 5 segundos.")
                         elif action == "gestures":
@@ -94,10 +101,10 @@ class CameraEngine:
                             latch = GestureLatch()
                             self.events.put("FONDO LISTO. Vuelve al encuadre. Prueba el boton Teletransporte o dos dedos en la frente.")
                     elif gestures_enabled:
-                        fired = latch.update(gesture, now)
+                        fired = latch.update(gesture if fx.gesture_allowed(gesture) else None, now)
                         if fired:
                             self.events.put(fx.trigger(fired, now))
-                    mask = segment.process(rgb).segmentation_mask if fx.mode == "clones" and not fx.hidden else None
+                    mask = segment.process(rgb).segmentation_mask if fx.mode in ("clones", "aura") and not fx.hidden else None
                     output = fx.render(frame, mask, now)
                     if not virtual_attempted and self.virtual:
                         virtual_attempted = True
@@ -112,6 +119,8 @@ class CameraEngine:
                     previous = now
                     countdown = capture.countdown(now)
                     tracking = f"Manos: {len(hand_points)} | Rostro: {'detectado' if face_points else 'reciente' if tracked_face else 'no detectado'} | Gesto: {gesture or 'ninguno'}"
+                    if gesture and not fx.gesture_allowed(gesture):
+                        tracking += " (ignorado)"
                     snapshot = (output, fps, fx.hidden, fx.mode, fx.background is not None, latch.progress(now), countdown, virtual_cam is not None, tracking)
                     if self.frames.full():
                         try:

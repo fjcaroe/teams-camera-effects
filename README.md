@@ -5,6 +5,38 @@ Windows x64, webcam integrada o USB. Procesamiento local con MediaPipe y OpenCV;
 sin API, cuentas, grabaciones ni subida de imagenes. La salida virtual se comparte
 con la aplicacion que elijas (Teams, por ejemplo).
 
+## Inicio rapido en este notebook
+
+Abre la carpeta del proyecto y haz doble clic en **start.bat**. Pulsa **Iniciar
+webcam**, luego **Elegir efectos y gestos...**. Usa **Solo Goku** si quieres probar
+el teletransporte sin activar otras cosas al mover las manos. Captura el fondo
+apartandote 5 segundos y espera el aviso verde **FONDO LISTO**. En Teams selecciona
+**OBS Virtual Camera** y deja AnimeCam abierta.
+
+Tambien puedes iniciar desde PowerShell:
+
+```powershell
+cd C:\Users\tito4\Documents\Proyectos\EffectCamera\teams-camera-effects
+.\start.bat
+```
+
+## Elegir efectos y evitar activaciones accidentales
+
+**Elegir efectos y gestos...** abre un panel con una casilla para cada tecnica.
+Solo las marcadas pueden activarse por gesto, boton o teclado. Al desmarcar un
+efecto en uso se detiene; si desmarcas Goku estando invisible, vuelves a aparecer.
+**Solo Goku** desmarca todos los demas. En una instalacion nueva solo Goku viene
+habilitado: una palma abierta no activa Rasengan hasta que lo marques.
+
+La seleccion se guarda automaticamente en `app-settings.json` (archivo local
+ignorado por Git, sin imagenes). Se conserva al cerrar la app y reiniciar webcam.
+Puedes desmarcar todos para usar la camara sin efectos. **Pausar gestos** pausa el
+reconocimiento automatico, manteniendo disponibles los botones de efectos marcados.
+**Volver a normal** retira el efecto actual sin cambiar tu seleccion.
+
+Mientras estas invisible se ignoran los otros gestos aunque esten habilitados;
+solo Goku puede hacerte reaparecer. Esto evita cambiar de efecto al retirar la mano.
+
 ## Iniciar
 
 1. Instala [Python 3.12](https://www.python.org/downloads/) si no esta disponible.
@@ -35,6 +67,8 @@ funcionando si falta el controlador; el indicador dice **Solo vista previa**.
 | Teletransporte | Indice y medio extendidos junto a la frente; anular y menique doblados | 2 |
 | Kage Bunshin | Dos manos visibles, indices extendidos y puntas juntas | 3 |
 | Rasengan | Palma abierta hacia la camara | 4 |
+| Aura Super Saiyan | Puno cerrado, cuatro dedos doblados | 5 |
+| Lluvia Matrix | Cuernos: indice y menique extendidos, medio y anular doblados | 6 |
 | Volver a normal | Boton o teclado | 0 |
 | Capturar fondo | Boton o teclado, cuenta regresiva de 5 s | 1 |
 
@@ -43,6 +77,10 @@ repetirlo; hay una pausa de 1,8 segundos entre activaciones. El gesto de Goku al
 desaparecer/reaparecer incluso cuando solo se transmite el fondo: la deteccion sigue
 mirando la webcam real. Los clones y Rasengan se activan y desactivan con su gesto.
 Los controles manuales permiten ensayar; **Pausar gestos** evita activaciones al hablar.
+Los botones **Probar** del selector permiten probar tambien Aura y Matrix.
+Aura dibuja un resplandor dorado alrededor de tu silueta; Matrix agrega un tinte
+verde y lluvia de digitos. Repite su gesto para apagarlos. No necesitan fondo
+capturado; Goku y clones si lo necesitan.
 
 Debajo de la imagen se muestran manos, rostro y gesto detectados. Para Goku deberia
 aparecer `Gesto: teleport` y avanzar la barra. Si no hay manos o rostro detectados,

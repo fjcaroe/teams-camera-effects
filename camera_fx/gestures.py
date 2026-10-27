@@ -36,6 +36,12 @@ def classify(hands, face):
     for hand in hands:
         if all(fingers(hand)):
             return "rasengan", (hand[9].x, hand[9].y)
+    for hand in hands:
+        shape = fingers(hand)
+        if shape == [True, False, False, True]:
+            return "matrix", None
+        if not any(shape):
+            return "aura", None
     return None, None
 
 

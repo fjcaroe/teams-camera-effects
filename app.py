@@ -3,6 +3,7 @@ import argparse
 import queue
 import tkinter as tk
 from tkinter import ttk
+from camera_fx.settings import CATALOG, load_enabled, save_enabled
 
 
 class App:
@@ -11,6 +12,10 @@ class App:
         self.closing = False
         self.gestures_active = True
         self.photo = None
+        self.enabled = load_enabled()
+        self.effect_vars = {}
+        self.effect_buttons = {}
+        self.effect_dialog = None
         root.title("AnimeCam · tu reunion, otro universo")
         root.geometry("1180x790")
         root.minsize(1000, 720)
@@ -37,7 +42,9 @@ class App:
         self.progress.pack(fill="x", pady=(0, 10))
         self.tracking = self.label(left, "Deteccion: esperando webcam", 9, "#b7a7f5")
         self.tracking.pack(anchor="w", pady=(0, 5))
-        self.label(left, "GOKU · dos dedos junto a la frente     /     CLONES · indices juntos, dos manos\nRASENGAN · palma abierta     /     Sosten 0,6 s y baja las manos antes de repetir.\nProcesamiento local · sin grabacion", 9, "#9da5c1").pack(anchor="w", pady=(0, 4))
+        self.selection_label = self.label(left, "", 9, "#9da5c1")
+        self.selection_label.pack(anchor="w", pady=(0, 4))
+        self.label(left, "Sosten el gesto 0,6 s y baja las manos antes de repetir.\nProcesamiento local · sin grabacion", 9, "#9da5c1").pack(anchor="w", pady=(0, 4))
         side = tk.Frame(content, bg="#1a1d2b", width=278)
         side.grid(row=0, column=1, sticky="ns", padx=(22, 0))
         side.pack_propagate(False)
@@ -53,16 +60,17 @@ class App:
         self.capture_button = self.button(side, "1  Capturar fondo · 5 s", lambda: self.command("capture"))
         self.label(side, "Apartate durante la cuenta regresiva.\nCamara fija, misma iluminacion.", 9, "#9da5c1").pack(anchor="w", padx=18, pady=(0, 16))
         self.label(side, "TUS TECNICAS", 11, "#a5acc7").pack(anchor="w", padx=18, pady=(5, 8))
-        self.button(side, "2  Teletransporte", lambda: self.command("teleport"))
-        self.button(side, "3  Kage Bunshin", lambda: self.command("clones"))
-        self.button(side, "4  Rasengan", lambda: self.command("rasengan"))
+        self.button(side, "Elegir efectos y gestos...", self.choose_effects, accent=True)
+        for action, caption in (("teleport", "2  Teletransporte"), ("clones", "3  Kage Bunshin"), ("rasengan", "4  Rasengan")):
+            self.effect_buttons[action] = self.button(side, caption, lambda a=action: self.command(a))
         self.button(side, "0  Volver a normal", lambda: self.command("reset"))
         self.gesture_button = self.button(side, "Pausar gestos", self.toggle_gestures)
         self.status = tk.StringVar(value="Listo. Webcam integrada = 0; prueba 1 o 2 para una USB.")
         tk.Label(root, textvariable=self.status, bg="#10121b", fg="#cbd0e4", anchor="w", wraplength=1100, font=("Segoe UI", 10)).pack(fill="x", padx=28, pady=18)
-        for key, action in (("1", "capture"), ("2", "teleport"), ("3", "clones"), ("4", "rasengan"), ("0", "reset")):
+        for key, action in (("1", "capture"), ("2", "teleport"), ("3", "clones"), ("4", "rasengan"), ("5", "aura"), ("6", "matrix"), ("0", "reset")):
             root.bind(key, lambda event, a=action: self.command(a) if event.widget.winfo_class() != "Spinbox" else None)
         root.protocol("WM_DELETE_WINDOW", self.close)
+        self.refresh_selection()
         root.after(30, self.poll)
 
     @staticmethod
@@ -88,7 +96,7 @@ class App:
         except (ValueError, tk.TclError):
             self.status.set("El indice debe ser un numero entre 0 y 9.")
             return
-        self.engine = CameraEngine(camera, self.virtual.get())
+        self.engine = CameraEngine(camera, self.virtual.get(), enabled=self.enabled)
         self.engine.start()
         self.gestures_active = True
         self.gesture_button.configure(text="Pausar gestos")
@@ -97,6 +105,9 @@ class App:
         self.background_status.configure(text="FONDO PENDIENTE · captura de nuevo al iniciar la webcam", fg="#ffcc80")
 
     def command(self, action):
+        if action in CATALOG and action not in self.enabled:
+            self.status.set("Este efecto esta desactivado. Habilitalo en Elegir efectos y gestos.")
+            return
         if self.engine:
             self.engine.commands.put(action)
             if action == "capture":
@@ -104,6 +115,57 @@ class App:
                 self.status.set("Apartate ahora. Espera la cuenta regresiva y el aviso verde FONDO LISTO.")
         else:
             self.status.set("Primero inicia la webcam.")
+
+    def refresh_selection(self):
+        names = [CATALOG[key][0].split(" · ")[-1] for key in CATALOG if key in self.enabled]
+        self.selection_label.configure(text="Efectos habilitados: " + (", ".join(names) if names else "ninguno"), wraplength=700)
+        for key, button in self.effect_buttons.items():
+            button.configure(state="normal" if key in self.enabled else "disabled")
+        for key, variable in self.effect_vars.items():
+            variable.set(key in self.enabled)
+
+    def update_selection(self):
+        self.enabled = {key for key, variable in self.effect_vars.items() if variable.get()}
+        self.refresh_selection()
+        if self.engine:
+            self.engine.commands.put(("enabled", sorted(self.enabled)))
+        try:
+            save_enabled(self.enabled)
+            self.status.set("Seleccion guardada. Solo los efectos marcados responden a gestos y botones.")
+        except OSError:
+            self.status.set("Seleccion aplicada. No se pudo guardar para el proximo inicio.")
+
+    def only_goku(self):
+        for key, variable in self.effect_vars.items():
+            variable.set(key == "teleport")
+        self.update_selection()
+
+    def choose_effects(self):
+        if self.effect_dialog is not None and self.effect_dialog.winfo_exists():
+            self.effect_dialog.lift()
+            return
+        dialog = tk.Toplevel(self.root)
+        self.effect_dialog = dialog
+        dialog.title("AnimeCam · Elegir efectos y gestos")
+        dialog.configure(bg="#10121b")
+        dialog.geometry("650x600")
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        self.label(dialog, "ELIGE TUS EFECTOS", 20, "#c0adff").pack(anchor="w", padx=22, pady=(20, 6))
+        self.label(dialog, "Desmarca los que no quieras: se detienen y dejan de responder.\nLa seleccion se guarda para la proxima vez.", 11, "#9da5c1").pack(anchor="w", padx=22, pady=(0, 12))
+        self.effect_vars = {}
+        for key, (name, hint, shortcut) in CATALOG.items():
+            row = tk.Frame(dialog, bg="#1a1d2b")
+            row.pack(fill="x", padx=22, pady=4)
+            variable = tk.BooleanVar(value=key in self.enabled)
+            self.effect_vars[key] = variable
+            tk.Checkbutton(row, text=name, variable=variable, command=self.update_selection, font=("Segoe UI", 11, "bold"), bg="#1a1d2b", fg="#eef0ff", selectcolor="#292d40", activebackground="#1a1d2b", activeforeground="white").pack(anchor="w", padx=8, pady=(5, 0))
+            detail = tk.Frame(row, bg="#1a1d2b")
+            detail.pack(fill="x", padx=14, pady=(0, 6))
+            self.label(detail, hint, 10, "#9da5c1").pack(side="left")
+            tk.Button(detail, text=f"Probar · {shortcut}", command=lambda a=key: self.command(a), bg="#393f58", fg="white", relief="flat", padx=8).pack(side="right")
+        self.button(dialog, "Solo Goku · evitar activaciones accidentales", self.only_goku, accent=True)
+        self.button(dialog, "Listo", dialog.destroy)
 
     def toggle_gestures(self):
         if self.engine:
